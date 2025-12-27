@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./ai-personal-assistant/backend
+    container_name: mahi-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+    command: python -m uvicorn app:app --host 0.0.0.0 --port 8000 --workers 1
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: mahi-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
