@@ -10,11 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout application repo
+      # 1️⃣ Checkout application repo (no submodules)
       - name: Checkout source code
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
-      # 2️⃣ Extract version from Git tag (v1, v1.1, v2...)
+      # 2️⃣ Extract version from Git tag
       - name: Extract version from Git tag
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
@@ -26,7 +28,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 4️⃣ Build & Push Backend Docker Image
+      # 4️⃣ Build & Push Backend Image
       - name: Build & Push Backend Image
         run: |
           docker build \
@@ -36,10 +38,10 @@ jobs:
           docker push \
             ${{ secrets.DOCKER_USERNAME }}/mahi-backend:${{ env.VERSION }}
 
-      # 5️⃣ Clone GitOps repo & update Canary image tag
+      # 5️⃣ Clone GitOps repo using PAT & update Canary
       - name: Update GitOps Repo (Canary Deployment)
         run: |
-          git clone https://github.com/rameshdevops2617/mahi-ai-gitops.git
+          git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/rameshdevops2617/mahi-ai-gitops.git
           cd mahi-ai-gitops
 
           sed -i "s/IMAGE_TAG/${{ env.VERSION }}/g" \
