@@ -49,5 +49,5 @@ jobs:
           git config user.email "ci@github.com"
 
           git add .
-          git commit -m "Canary deploy MAHI AI ${{ env.VERSION }}"
+          git commit -m "Canary deploy MAHI AI V1${{ env.VERSION }}"
           git push
