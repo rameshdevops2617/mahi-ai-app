@@ -31,7 +31,7 @@ jobs:
 
       - name: Update GitOps Repo (Canary)
         run: |
-          git clone https://github.com/<YOUR_GITHUB_USERNAME>/mahi-ai-gitops.git
+          git clone https://github.com/rameshdevops2617/mahi-ai-gitops.git
           cd mahi-ai-gitops
           sed -i "s/IMAGE_TAG/${{ env.VERSION }}/g" k8s/overlays/canary/deployment-patch.yaml
           git config user.name "GitHub Actions"
