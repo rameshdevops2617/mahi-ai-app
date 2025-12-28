@@ -1,21 +1,20 @@
 import requests
+import os
 import json
-from config import OLLAMA_URL, MODEL_NAME, SYSTEM_PROMPT
+import time
 
-def stream_ai(user_message: str, context: str = ""):
-    """
-    Streams AI response token-by-token from Ollama
-    and cleans escaped characters like \\n
-    """
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434/api/generate")
+MODEL_NAME = os.getenv("MODEL_NAME", "phi")
 
+def stream_ai(message: str, context: str):
     prompt = f"""
-{SYSTEM_PROMPT}
+You are MAHI AI, a helpful personal assistant.
 
-Context:
+Conversation context:
 {context}
 
 User:
-{user_message}
+{message}
 
 Assistant:
 """
@@ -23,33 +22,31 @@ Assistant:
     payload = {
         "model": MODEL_NAME,
         "prompt": prompt,
-        "stream": True,
-        "options": {
-            "num_predict": 150,
-            "temperature": 0.3
-        }
+        "stream": True
     }
 
-    with requests.post(
-        OLLAMA_URL,
-        json=payload,
-        stream=True,
-        timeout=(10, 300)
-    ) as response:
+    try:
+        with requests.post(
+            OLLAMA_URL,
+            json=payload,
+            stream=True,
+            timeout=(10, 300)
+        ) as response:
 
-        response.raise_for_status()
+            response.raise_for_status()
 
-        for line in response.iter_lines():
-            if not line:
-                continue
+            for line in response.iter_lines():
+                if not line:
+                    continue
 
-            try:
                 data = json.loads(line.decode("utf-8"))
-                token = data.get("response", "")
 
-                # 🔥 FIX: convert escaped \n to real newline
-                token = token.replace("\\n", "\n")
+                if "response" in data:
+                    yield data["response"]
 
-                yield token
-            except json.JSONDecodeError:
-                continue
+                if data.get("done"):
+                    break
+
+    except Exception as e:
+        yield f"\n[ERROR]: {str(e)}\n"
+        time.sleep(0.1)
