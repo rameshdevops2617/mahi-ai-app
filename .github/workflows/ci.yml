@@ -5,44 +5,59 @@ on:
     tags:
       - "v*"
 
+env:
+  DOCKER_NAMESPACE: rameshcloud
+
 jobs:
-  build-and-deploy:
+  build-and-canary:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout application code
-      - name: Checkout source
+      # 1️⃣ Checkout application repo
+      - name: Checkout source code
         uses: actions/checkout@v4
         with:
           submodules: false
 
       # 2️⃣ Extract version from Git tag
-      - name: Extract version
+      - name: Extract version from Git tag
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      # 3️⃣ Docker Hub login
-      - name: Docker Login
+      # 3️⃣ Login to Docker Hub
+      - name: Docker Hub Login
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 4️⃣ Build & push backend image
-      - name: Build & Push Backend
+      # 4️⃣ Build & Push Backend Image
+      - name: Build & Push Backend Image
         run: |
           docker build \
-            -t rameshcloud/mahi-backend:${{ env.VERSION }} \
+            -t $DOCKER_NAMESPACE/mahi-backend:${{ env.VERSION }} \
             ./backend
 
-          docker push rameshcloud/mahi-backend:${{ env.VERSION }}
+          docker push \
+            $DOCKER_NAMESPACE/mahi-backend:${{ env.VERSION }}
 
-      # 5️⃣ Update GitOps repo (Kustomize image tag)
+      # 5️⃣ Build & Push Frontend Image
+      - name: Build & Push Frontend Image
+        run: |
+          docker build \
+            -t $DOCKER_NAMESPACE/mahi-frontend:${{ env.VERSION }} \
+            ./frontend
+
+          docker push \
+            $DOCKER_NAMESPACE/mahi-frontend:${{ env.VERSION }}
+
+      # 6️⃣ Update GitOps Repo → CANARY (Kustomize)
       - name: Update GitOps Repo (Canary)
         run: |
           git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/rameshdevops2617/mahi-ai-gitops.git
           cd mahi-ai-gitops
 
+          # Update BOTH backend & frontend image tags
           sed -i "s/newTag:.*/newTag: ${{ env.VERSION }}/" \
             k8s/overlays/canary/kustomization.yaml
 
@@ -51,4 +66,26 @@ jobs:
 
           git add .
           git commit -m "Canary deploy MAHI AI ${{ env.VERSION }}"
+          git push
+
+  promote-to-stable:
+    needs: build-and-canary
+    runs-on: ubuntu-latest
+
+    steps:
+      # 7️⃣ Promote Canary → Stable automatically
+      - name: Promote Canary to Stable
+        run: |
+          git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/rameshdevops2617/mahi-ai-gitops.git
+          cd mahi-ai-gitops
+
+          # Promote BOTH backend & frontend
+          sed -i "s/newTag:.*/newTag: ${{ env.VERSION }}/" \
+            k8s/overlays/stable/kustomization.yaml
+
+          git config user.name "GitHub Actions"
+          git config user.email "ci@github.com"
+
+          git add .
+          git commit -m "Promote MAHI AI ${{ env.VERSION }} to stable"
           git push
