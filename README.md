@@ -1,4 +1,10 @@
 # 🤖 MAHI AI – ChatGPT-Style Personal AI Assistant (v2.2)
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/e6b4ad0f-9da9-4360-bb73-117a8d71a38f" />
+
+
+
+
+
 
 MAHI AI is a **ChatGPT-style personal AI assistant** built with a **modern Copilot UI**, **real-time streaming responses**, and a **production-grade DevOps pipeline** using **Docker, GitHub Actions, GitOps, Argo CD, and Argo Rollouts**.
 
