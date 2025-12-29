@@ -1,7 +1,8 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import "./Chat.css";
 
-function Chat({ chatId }) {
+export default function Chat({ chatId }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -10,74 +11,70 @@ function Chat({ chatId }) {
     if (!input.trim() || loading) return;
 
     const userText = input;
-
-    // Add user message
-    setMessages((prev) => [...prev, { sender: "user", text: userText }]);
     setInput("");
     setLoading(true);
 
-    // Add AI placeholder
-    setMessages((prev) => [...prev, { sender: "ai", text: "" }]);
+    setMessages(prev => [...prev, { role: "user", text: userText }]);
+    setMessages(prev => [...prev, { role: "assistant", text: "" }]);
 
-    const response = await fetch("http://localhost:8000/chat/stream", {
+    const res = await fetch("http://localhost:8000/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: userText,
-        chat_id: chatId, // 🔴 REQUIRED — THIS FIXES NO-RESPONSE ISSUE
-      }),
+      body: JSON.stringify({ message: userText, chat_id: chatId }),
     });
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
     let aiText = "";
 
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
 
-      aiText += decoder.decode(value, { stream: true });
-
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          sender: "ai",
-          text: aiText,
+      aiText += decoder.decode(value);
+      setMessages(prev => {
+        const msgs = [...prev];
+        msgs[msgs.length - 1] = {
+          role: "assistant",
+          text: aiText + "▍",
         };
-        return updated;
+        return msgs;
       });
     }
+
+    setMessages(prev => {
+      const msgs = [...prev];
+      msgs[msgs.length - 1] = {
+        role: "assistant",
+        text: aiText,
+      };
+      return msgs;
+    });
 
     setLoading(false);
   };
 
   return (
-    <div className="chat-container">
-      <div className="chat-messages">
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`chat-bubble ${msg.sender}`}
-          >
-            {msg.text}
+    <div className="chat-root">
+      <div className="chat-scroll">
+        {messages.map((m, i) => (
+          <div key={i} className={`msg ${m.role}`}>
+            <div className="bubble">
+              <ReactMarkdown>{m.text}</ReactMarkdown>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="chat-input">
+      <div className="chat-input-bar">
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Ask MAHI AI..."
-          disabled={loading}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && sendMessage()}
+          placeholder="Ask MAHI AI anything…"
         />
-        <button onClick={sendMessage} disabled={loading}>
-          Send
-        </button>
+        <button onClick={sendMessage}>Send</button>
       </div>
     </div>
   );
 }
-
-export default Chat;
