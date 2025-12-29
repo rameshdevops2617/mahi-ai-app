@@ -11,7 +11,7 @@ function App() {
     await fetch("http://localhost:8000/chat/reset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId })
+      body: JSON.stringify({ chat_id: chatId }),
     });
 
     setChatId(uuidv4());
